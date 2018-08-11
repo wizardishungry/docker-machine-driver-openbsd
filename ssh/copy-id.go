@@ -30,7 +30,7 @@ func Dial(host string, port string, username string, password string) (*ssh.Clie
 
 // CopyID copy ssh key to host
 func CopyID(client *ssh.Client, key []byte) error {
-	username := "docker" // FIXME hardcoded
+	username := client.User()
 	// Each ClientConn can support multiple interactive sessions,
 	// represented by a Session.
 	session, err := client.NewSession()
@@ -48,6 +48,5 @@ func CopyID(client *ssh.Client, key []byte) error {
 	if err := session.Run(cmd); err != nil {
 		return errors.New("Failed to run: " + err.Error())
 	}
-	fmt.Println(b.String())
 	return nil
 }
