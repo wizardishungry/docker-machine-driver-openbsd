@@ -3,6 +3,11 @@
 
 Work in progress.
 
+## Caveats
+
+* Doesn't work on my machine on 6.3 after installing latest syspatch
+* Container host is insecure on multiuser system
+
 ## Hacking
 
 Edit `/etc/pf.conf`

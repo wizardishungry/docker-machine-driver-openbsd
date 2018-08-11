@@ -3,27 +3,69 @@ package driver
 import (
 	"fmt"
 	"net"
+	"time"
+
+	myssh "github.com/WIZARDISHUNGRY/docker-machine-driver-openbsd/ssh"
+	"github.com/WIZARDISHUNGRY/docker-machine-driver-openbsd/vmm"
 
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/mcnflag"
+	"github.com/docker/machine/libmachine/ssh"
 	"github.com/docker/machine/libmachine/state"
 )
 
 // Driver parameters
 type Driver struct {
 	*drivers.BaseDriver
+	*vmm.Instance
+	SSHKeyPair *ssh.KeyPair
 }
+
+const username string = "docker"
+const password string = "tcuser"
 
 // NewDriver creates and returns a new instance of the driver
 func NewDriver() *Driver {
 	return &Driver{
 		BaseDriver: &drivers.BaseDriver{},
+		Instance: &vmm.Instance{
+			Label: "docker",                    // FIXME
+			ISO:   "/home/jon/boot2docker.iso", // FIXME
+			Disk:  "/home/jon/disk.img",        // FIXME – vmctl create disk.img -s 1M
+			Mem:   1024,
+		},
 	}
 }
 
 // Create copy ssh key in docker-machine dir and set the node IP
 func (d *Driver) Create() (err error) {
-	err = nil
+	err = d.Instance.Start()
+	d.BaseDriver.IPAddress, err = d.Instance.GetIP()
+
+	// copy SSH key pair to machine directory
+	if err := d.SSHKeyPair.WriteToFile(d.GetSSHKeyPath(), d.GetSSHKeyPath()+".pub"); err != nil {
+		return fmt.Errorf("Error when copying SSH key pair to machine directory: %s", err.Error())
+	}
+
+	fmt.Println("Waiting for ssh")
+
+	// Wait for SSH
+	for {
+		//err := drivers.WaitForSSH(d)
+		client, err := myssh.Dial(d.IPAddress, "22", username, password)
+		if err != nil {
+			fmt.Println(err)
+			time.Sleep(1 * time.Second)
+		} else {
+			if client != nil {
+				return myssh.CopyID(client, d.SSHKeyPair.PublicKey)
+			}
+			fmt.Print(".")
+			break
+		}
+
+	}
+
 	return
 }
 
@@ -84,22 +126,22 @@ func (d *Driver) GetURL() (string, error) {
 
 // Kill don't do anything
 func (d *Driver) Kill() error {
-	return fmt.Errorf("FIXME unimplemented")
+	return fmt.Errorf("You can't kill a vmm instance")
 }
 
 // Start don't do anything
 func (d *Driver) Start() error {
-	return fmt.Errorf("FIXME unimplemented")
+	return fmt.Errorf("You can't start a vmm instance")
 }
 
 // Stop don't do anything
 func (d *Driver) Stop() error {
-	return fmt.Errorf("FIXME unimplemented")
+	return fmt.Errorf("You can't stop a vmm instance")
 }
 
 // Restart don't do anything
 func (d *Driver) Restart() error {
-	return fmt.Errorf("FIXME unimplemented")
+	return fmt.Errorf("You can't restart a vmm instance")
 }
 
 // Remove delete the resources reservation
@@ -112,6 +154,23 @@ func (d *Driver) Remove() error {
 // SetConfigFromFlags configure the driver from the command line arguments
 func (d *Driver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 
-	return fmt.Errorf("Unimplemented FIXME")
+	// Unimplemented FIXME
 
+	return nil
+
+}
+
+// PreCreateCheck check parameters
+func (d *Driver) PreCreateCheck() (err error) {
+
+	// check if a SSH key pair is available
+	if d.SSHKeyPair == nil {
+		// generate a new SSH key pair
+		d.SSHKeyPair, err = ssh.NewKeyPair()
+		if err != nil {
+			return fmt.Errorf("Error when generating a new SSH key pair: %s", err.Error())
+		}
+	}
+
+	return
 }
