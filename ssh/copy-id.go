@@ -43,7 +43,7 @@ func CopyID(client *ssh.Client, key []byte) error {
 	// the remote side using the Run method.
 	var b bytes.Buffer
 	session.Stdout = &b
-	cmd := `echo "` + string(key) + `" >>~` + username + `/.ssh/authorized_keys`
+	cmd := `mkdir -p ~` + username + `/.ssh ; echo "` + string(key) + `" >>~` + username + `/.ssh/authorized_keys`
 	fmt.Println(cmd)
 	if err := session.Run(cmd); err != nil {
 		return errors.New("Failed to run: " + err.Error())

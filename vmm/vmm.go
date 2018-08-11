@@ -45,6 +45,8 @@ func (i *Instance) Start() error {
 		return errors.New("Couldn't start VMM " + message)
 	}
 
+	// FIXME shoot newlines on vmctl console to speed up boot2docker
+
 	return nil
 }
 

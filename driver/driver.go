@@ -37,10 +37,16 @@ func NewDriver() *Driver {
 	}
 }
 
+// DriverName returns the name of the driver
+func (d *Driver) DriverName() string {
+	return "openbsd"
+}
+
 // Create copy ssh key in docker-machine dir and set the node IP
 func (d *Driver) Create() (err error) {
 	err = d.Instance.Start()
 	d.BaseDriver.IPAddress, err = d.Instance.GetIP()
+	d.BaseDriver.SSHUser = username
 
 	// copy SSH key pair to machine directory
 	if err := d.SSHKeyPair.WriteToFile(d.GetSSHKeyPath(), d.GetSSHKeyPath()+".pub"); err != nil {
@@ -52,6 +58,7 @@ func (d *Driver) Create() (err error) {
 	// Wait for SSH
 	for {
 		//err := drivers.WaitForSSH(d)
+		// FIXME should test if instance is still alive here as well using vmctl
 		client, err := myssh.Dial(d.IPAddress, "22", username, password)
 		if err != nil {
 			fmt.Println(err)
@@ -91,6 +98,8 @@ func (d *Driver) GetSSHHostname() (string, error) {
 
 // GetState returns the state of the node
 func (d *Driver) GetState() (state.State, error) {
+
+	return state.Running, nil // FIXME
 
 	status := "wtf"
 
