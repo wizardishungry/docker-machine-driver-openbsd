@@ -6,15 +6,14 @@ import (
 	"fmt"
 	"os/exec"
 	"regexp"
-	"strconv"
 )
 
-const vmctl string = "vmctl"
+const vmctl string = "/usr/sbin/vmctl"
 
 var startRegexp *regexp.Regexp
 
 func init() {
-	startRegexp = regexp.MustCompile(`vmctl: started vm (?P<Id>\d{1,}) successfully`)
+	startRegexp = regexp.MustCompile(`vmctl: started vm (?P<Id>\d{1,}) successfully, tty /dev/`)
 }
 
 // Instance represents a VMM instance
@@ -23,15 +22,34 @@ type Instance struct {
 	Label string
 	Disk  string
 	Mem   uint16 // Megabytes
-
-	id string
+	Name  string
+	id    string
 }
 
 // Start instance
 func (i *Instance) Start() error {
-	cmd := exec.Command(vmctl, "start", i.Label, "-L", "-r", i.ISO, "-d", i.Disk, "-m", strconv.Itoa(int(i.Mem))+"M")
+	fmt.Println(vmctl, "start", i.Name,
+		"-t", "docker", // FIXME hardcoded template name
+		"-r", "/home/vm/boot2docker.iso",
+		// "-r", i.ISO,
+
+		//"-d", i.Disk,
+		// "-d", "qcow:/home/jon/test.img",
+
+		// "-m", strconv.Itoa(int(i.Mem))+"M",
+	)
+	cmd := exec.Command(vmctl, "start", i.id,
+		"-t", "docker", // FIXME hardcoded template name
+		"-r", "/home/vm/boot2docker.iso",
+		// "-r", i.ISO,
+
+		//"-d", i.Disk,
+		// "-d", "qcow:/home/jon/test.img",
+		// "-m", strconv.Itoa(int(i.Mem))+"M",
+	)
 	var out bytes.Buffer
 	cmd.Stderr = &out
+	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
 		// TODO wrap exit codes if err is an ExitErr
@@ -39,11 +57,15 @@ func (i *Instance) Start() error {
 	}
 	message := out.String()
 
-	i.id = startRegexp.FindStringSubmatch(message)[1]
+	fmt.Println("messsage", message)
 
-	if i.id == "" {
+	// FIXME brittle
+	match := startRegexp.FindStringSubmatch(message)
+
+	if len(match) != 1 {
 		return errors.New("Couldn't start VMM " + message)
 	}
+	i.id = match[1]
 
 	// FIXME shoot newlines on vmctl console to speed up boot2docker
 

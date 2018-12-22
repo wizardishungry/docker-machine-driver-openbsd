@@ -1,16 +1,35 @@
 # docker-machine-driver-openbsd
-🐡 docker-machine driver plugin for vmm (native OpenBSD hypervisor) 
+🐡 docker-machine driver plugin for vmm (native OpenBSD hypervisor).
 
 Work in progress.
 
 ## Caveats
 
-* Doesn't work on my machine on 6.3 after installing latest syspatch
-* Container host is insecure on multiuser system
 * ISO and disk paths hardcoded. Fix these in the source for now.
-* vmd won't start without a disk; we don't need one.
 
 ## Hacking
+Install `docker-machine`
+```csh
+go get -u github.com/docker/machine/...
+```
+
+Setup template vm in `/etc/vm.conf`
+```
+vm "docker" {
+  disable
+  memory 1024M
+  boot "/dev/null"
+  local interface {
+    group "docker"
+  }
+  allow instance {
+    owner :wheel
+    boot
+    cdrom
+    disk
+  }
+}
+```
 
 Edit `/etc/pf.conf`
 ```

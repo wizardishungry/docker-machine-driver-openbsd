@@ -3,6 +3,7 @@ package driver
 import (
 	"fmt"
 	"net"
+	"os"
 	"time"
 
 	myssh "github.com/WIZARDISHUNGRY/docker-machine-driver-openbsd/ssh"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/mcnflag"
+	"github.com/docker/machine/libmachine/mcnutils"
 	"github.com/docker/machine/libmachine/ssh"
 	"github.com/docker/machine/libmachine/state"
 )
@@ -19,22 +21,33 @@ type Driver struct {
 	*drivers.BaseDriver
 	*vmm.Instance
 	SSHKeyPair *ssh.KeyPair
+
+	*mcnutils.B2dUtils
+
+	Boot2DockerURL string
 }
 
 const username string = "docker"
 const password string = "tcuser"
 
+func storagePath() string {
+	return fmt.Sprintf("%s/.docker/machine", os.Getenv("HOME"))
+
+}
+
 // NewDriver creates and returns a new instance of the driver
 func NewDriver() *Driver {
-	return &Driver{
+	d := Driver{
 		BaseDriver: &drivers.BaseDriver{},
 		Instance: &vmm.Instance{
-			Label: "docker",                    // FIXME
-			ISO:   "/home/jon/boot2docker.iso", // FIXME
-			Disk:  "/home/jon/disk.img",        // FIXME – vmctl create disk.img -s 1M
+			Label: "docker",                                          // FIXME
+			ISO:   "/home/jon/.docker/machine/cache/boot2docker.iso", // FIXME
 			Mem:   1024,
+			Name:  "FIXME",
 		},
 	}
+	d.B2dUtils = mcnutils.NewB2dUtils(storagePath())
+	return &d
 }
 
 // DriverName returns the name of the driver
@@ -44,6 +57,12 @@ func (d *Driver) DriverName() string {
 
 // Create copy ssh key in docker-machine dir and set the node IP
 func (d *Driver) Create() (err error) {
+
+	// TODO: iso_url from command line?
+	// if err := d.B2dUtils.CopyIsoToMachineDir("https://github.com/boot2docker/boot2docker/releases/download/v18.09.0/boot2docker.iso", d.BaseDriver.MachineName); err != nil {
+	// 	return err
+	// }
+
 	err = d.Instance.Start()
 	d.BaseDriver.IPAddress, err = d.Instance.GetIP()
 	d.BaseDriver.SSHUser = username
@@ -171,7 +190,6 @@ func (d *Driver) SetConfigFromFlags(opts drivers.DriverOptions) error {
 
 // PreCreateCheck check parameters
 func (d *Driver) PreCreateCheck() (err error) {
-
 	// check if a SSH key pair is available
 	if d.SSHKeyPair == nil {
 		// generate a new SSH key pair
@@ -180,6 +198,5 @@ func (d *Driver) PreCreateCheck() (err error) {
 			return fmt.Errorf("Error when generating a new SSH key pair: %s", err.Error())
 		}
 	}
-
 	return
 }
